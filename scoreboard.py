@@ -1,78 +1,90 @@
-
-
 from turtle import Turtle
 import os
 
-HS_FILE = "highscore.txt"
+HIGH_SCORE_FILE = "highscore.txt"
 
 class Scoreboard(Turtle):
     def __init__(self):
         super().__init__()
         self.score = 0
         self.level = 1
-        self.high = self._load_high()
+        self.high_score = self.load_high_score()
         self.hideturtle()
         self.penup()
         self.color("white")
-        # separate turtle for center messages
-        self.msg = Turtle()
-        self.msg.hideturtle()
-        self.msg.penup()
-        self.update_display()
+        
+        # Create a separate turtle for center messages
+        self.message_turtle = Turtle()
+        self.message_turtle.hideturtle()
+        self.message_turtle.penup()
+        self.message_turtle.color("white")
+        
+        self.update_scoreboard()
 
-    def _load_high(self):
-        if not os.path.exists(HS_FILE):
-            # creating an empty file
-            with open(HS_FILE, "w") as f:
-                f.write("0")
+    def load_high_score(self):
+        """Load high score from file"""
+        if not os.path.exists(HIGH_SCORE_FILE):
+            with open(HIGH_SCORE_FILE, "w") as file:
+                file.write("0")
             return 0
+        
         try:
-            with open(HS_FILE, "r") as f:
-                return int(f.read().strip() or 0)
-        except Exception:
+            with open(HIGH_SCORE_FILE, "r") as file:
+                return int(file.read())
+        except:
             return 0
 
-    def _save_high(self):
+    def save_high_score(self):
+        """Save high score to file"""
         try:
-            with open(HS_FILE, "w") as f:
-                f.write(str(self.high))
-        except Exception:
-            # not critical for gameplay
-            print("Warning: couldn't save high score")
+            with open(HIGH_SCORE_FILE, "w") as file:
+                file.write(str(self.high_score))
+        except:
+            print("Couldn't save high score")
 
-    def update_display(self):
-        """Draw HUD at the top."""
+    def update_scoreboard(self):
+        """Update the score display at the top"""
         self.clear()
         self.goto(0, 270)
-        self.write(f"Score: {self.score}   High: {self.high}   Lvl: {self.level}",
+        self.write(f"Score: {self.score}   High Score: {self.high_score}   Level: {self.level}",
                    align="center", font=("Arial", 16, "normal"))
 
     def increase_score(self):
+        """Add a point and update display"""
         self.score += 1
-        if self.score > self.high:
-            self.high = self.score
-            self._save_high()
-            # small celebratory message
-            self.msg.clear()
-            self.msg.goto(0, 240)
-            self.msg.write("NEW HIGH!", align="center", font=("Arial", 14, "bold"))
-        self.update_display()
+        
+        # Check for new high score
+        if self.score > self.high_score:
+            self.high_score = self.score
+            self.save_high_score()
+            self.message_turtle.clear()
+            self.message_turtle.goto(0, 240)
+            self.message_turtle.color("yellow")
+            self.message_turtle.write("NEW HIGH SCORE!", align="center", font=("Arial", 14, "bold"))
+        
+        self.update_scoreboard()
 
     def reset(self):
+        # Reset score and level for new game
         self.score = 0
         self.level = 1
         self.clear()
-        self.msg.clear()
-        self.update_display()
+        self.message_turtle.clear()
+        self.update_scoreboard()
 
-    def game_over(self):
-        self.msg.clear()
-        self.msg.goto(0, 0)
-        self.msg.write("GAME OVER", align="center", font=("Arial", 24, "bold"))
-        self.msg.goto(0, -40)
-        self.msg.write(f"Score: {self.score}", align="center", font=("Arial", 18, "normal"))
+    def show_game_over(self):
+        # Display game over message
+        self.message_turtle.clear()
+        self.message_turtle.color("red")
+        self.message_turtle.goto(0, 0)
+        self.message_turtle.write("GAME OVER", align="center", font=("Arial", 24, "bold"))
+        self.message_turtle.goto(0, -40)
+        self.message_turtle.color("white")
+        self.message_turtle.write(f"Final Score: {self.score}", align="center", font=("Arial", 18, "normal"))
 
-    def announce_level_up(self):
-        self.msg.clear()
-        self.msg.goto(0, 230)
-        self.msg.write(f"Level {self.level}", align="center", font=("Arial", 16, "bold"))
+    def show_level_up(self):
+        # Display level up message
+        self.message_turtle.clear()
+        self.message_turtle.color("green")
+        self.message_turtle.goto(0, 230)
+        self.message_turtle.write(f"LEVEL {self.level}!", align="center", font=("Arial", 16, "bold"))

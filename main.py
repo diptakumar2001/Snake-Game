@@ -5,110 +5,107 @@ from food import Food
 from scoreboard import Scoreboard
 from leaderboard import Leaderboard
 
-
-WIDTH, HEIGHT = 600, 600
-HALF_BOUND = 280
-LEVEL_UP_EVERY = 5
+# Game settings
+SCREEN_SIZE = 600
+WALL_LIMIT = 280
+POINTS_FOR_LEVEL_UP = 5
 MAX_LEVEL = 5
 
-restart_flag = False
-
-def on_restart():
-    """Triggered when user presses 'r' key to restart."""
-    global restart_flag
-    restart_flag = True
-
-
+# Setup screen
 screen = Screen()
-screen.setup(WIDTH, HEIGHT)
+screen.setup(SCREEN_SIZE, SCREEN_SIZE)
 screen.bgcolor("black")
 screen.title("Snake Game")
 screen.tracer(0)
 
+# Get player name
+player_name = screen.textinput("Player Name", "Enter your name:")
+if not player_name:
+    player_name = "Player"
+else:
+    player_name = player_name.strip()
 
-name_from_ui = screen.textinput("Player Name", "Enter your name:")
-player_name = (name_from_ui.strip() if name_from_ui else "Player")
-
-# Print confirmation to console
 print(f"Starting game for: {player_name}")
 
-snake = Snake()
-food = Food()
-scoreboard = Scoreboard()
-leaderboard = Leaderboard()
+def calculate_speed(level, score):
+    """Get game speed based on level and score"""
+    base = 0.15
+    level_boost = (level - 1) * 0.015
+    score_boost = score * 0.002
+    speed = base - level_boost - score_boost
+    return max(0.03, speed)
 
-
-screen.listen()
-screen.onkey(snake.up, "Up")
-screen.onkey(snake.down, "Down")
-screen.onkey(snake.left, "Left")
-screen.onkey(snake.right, "Right")
-screen.onkey(on_restart, "r")
-
-
-def reset_for_new_round():
-    """Reset snake, food, scoreboard, and level for a new round."""
-    global restart_flag
-    restart_flag = False
+def restart_game(snake, food, scoreboard):
+    """Reset everything for a new game"""
+    # Clear old snake segments
     for segment in snake.segments:
         segment.goto(1000, 1000)
     snake.segments.clear()
+    
+    # Make new snake
     snake.make_snake()
     food.new_food()
     scoreboard.reset()
-    scoreboard.level = 1
 
-def calc_speed(level, score):
-    base = 0.15
-    level_adj = (level - 1) * 0.015
-    score_adj = score * 0.002
-    return max(0.03, base - level_adj - score_adj)
+def hit_wall(snake):
+    """Check if snake crashed into wall"""
+    head = snake.segments[0]
+    return abs(head.xcor()) > WALL_LIMIT or abs(head.ycor()) > WALL_LIMIT
 
+def hit_tail(snake):
+    """Check if snake ran into itself"""
+    head = snake.segments[0]
+    for segment in snake.segments[1:]:
+        if head.distance(segment) < 10:
+            return True
+    return False
 
-while True:
-    reset_for_new_round()
-    game_running = True
+# Main game loop
+keep_playing = True
 
-    while game_running:
+while keep_playing:
+    # Create fresh game objects for each round
+    snake = Snake()
+    food = Food()
+    scoreboard = Scoreboard()
+    leaderboard = Leaderboard()
+    
+    # Setup controls
+    screen.listen()
+    screen.onkey(snake.up, "Up")
+    screen.onkey(snake.down, "Down")
+    screen.onkey(snake.left, "Left")
+    screen.onkey(snake.right, "Right")
+    
+    game_on = True
+    
+    while game_on:
         screen.update()
-        time.sleep(calc_speed(scoreboard.level, scoreboard.score))
+        time.sleep(calculate_speed(scoreboard.level, scoreboard.score))
         snake.move()
-        head = snake.segments[0]
-
-        # Detect collision with food
-        if head.distance(food) < 15:
+        
+        # Check if snake ate food
+        if snake.segments[0].distance(food) < 15:
             food.new_food()
             snake.extend()
             scoreboard.increase_score()
-
-            # Level up after every few points
-            if scoreboard.score % LEVEL_UP_EVERY == 0 and scoreboard.level < MAX_LEVEL:
+            
+            # Level up check
+            if scoreboard.score % POINTS_FOR_LEVEL_UP == 0 and scoreboard.level < MAX_LEVEL:
                 scoreboard.level += 1
-                scoreboard.announce_level_up()
+                scoreboard.show_level_up()
+        
+        # Check for collisions
+        if hit_wall(snake) or hit_tail(snake):
+            scoreboard.show_game_over()
+            leaderboard.update(player_name, scoreboard.score)
+            game_on = False
+            time.sleep(1.5)
+    
+    # Ask if player wants another round
+    response = screen.textinput("Game Over", "Play again? (yes/no)")
+    if not response or response.lower() not in ["yes", "y"]:
+        keep_playing = False
+        print(f"Thanks for playing, {player_name}!")
 
-        # Detect collision with border
-        if abs(head.xcor()) > HALF_BOUND or abs(head.ycor()) > HALF_BOUND:
-            scoreboard.game_over()
-            game_running = False
-            break
-
-        # Detect collision with tail
-        for segment in snake.segments[1:]:
-            if head.distance(segment) < 10:
-                scoreboard.game_over()
-                game_running = False
-                break
-
-    # Game Over: update leaderboard
-    leaderboard.update(player_name, scoreboard.score)
-    print("Game over. Press 'r' to restart.")
-
-    # Wait for restart
-    while True:
-        screen.update()
-        time.sleep(0.12)
-        if restart_flag:
-            break
-
-# Keeps window open until closed manually
-screen.exitonclick()
+screen.bye()

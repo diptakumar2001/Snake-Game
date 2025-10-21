@@ -1,45 +1,57 @@
+import json
+import os
 
-# Leaderboard, for local tests
-
-import json, os
-
-SCORES_PATH = "scores.json"
-TOP_N = 5
+LEADERBOARD_FILE = "scores.json"
+TOP_SCORES = 5
 
 class Leaderboard:
     def __init__(self):
-        self.path = SCORES_PATH
-        self.scores = self._load()
+        self.file_path = LEADERBOARD_FILE
+        self.scores = self.load_scores()
 
-    def _load(self):
-        if not os.path.exists(self.path):
-            with open(self.path, "w") as f:
-                json.dump([], f)
+    def load_scores(self):
+        # Load scores from file
+        if not os.path.exists(self.file_path):
+            with open(self.file_path, "w") as file:
+                json.dump([], file)
             return []
+        
         try:
-            with open(self.path, "r") as f:
-                return json.load(f)
-        except Exception:
+            with open(self.file_path, "r") as file:
+                return json.load(file)
+        except:
             return []
 
-    def _save(self):
+    def save_scores(self):
+        # Save scores to file
         try:
-            with open(self.path, "w") as f:
-                json.dump(self.scores, f)
-        except Exception:
+            with open(self.file_path, "w") as file:
+                json.dump(self.scores, file, indent=2)
+        except:
             print("Couldn't save leaderboard")
 
-    def update(self, name, score):
-        # append then keep top N
+    def update(self, player_name, score):
+        # Add a new score and keep only top scores
         try:
             score = int(score)
-        except Exception:
+        except:
             score = 0
-        self.scores.append({"name": name, "score": score})
-        self.scores = sorted(self.scores, key=lambda x: x["score"], reverse=True)[:TOP_N]
-        self._save()
-        # print to console so it's visible
-        print(" Leaderboard ")
-        for i, e in enumerate(self.scores, 1):
-            print(f"{i}. {e['name']} — {e['score']}")
         
+        # Add new score
+        self.scores.append({"name": player_name, "score": score})
+        
+        # Sort by score and keep only top scores
+        self.scores.sort(key=lambda x: x["score"], reverse=True)
+        self.scores = self.scores[:TOP_SCORES]
+        
+        self.save_scores()
+        self.display()
+
+    def display(self):
+        # Print leaderboard to console
+        print("\n" + "="*30)
+        print("LEADERBOARD")
+        print("="*30)
+        for i, entry in enumerate(self.scores, 1):
+            print(f"{i}. {entry['name']} - {entry['score']} points")
+        print("="*30 + "\n")
